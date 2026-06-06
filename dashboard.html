@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Renewable Grid Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="app-grid">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo">☀️</div>
+                <div class="brand-text">
+                    <div class="title">RenewGrid</div>
+                    <div class="subtitle">Control Center</div>
+                </div>
+            </div>
+
+            <nav class="nav">
+                <button class="nav-btn active" data-tab="dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</button>
+                <button class="nav-btn" data-tab="sources"><i class="fa-solid fa-bolt"></i> Sources</button>
+                <button class="nav-btn" data-tab="storage"><i class="fa-solid fa-battery-half"></i> Storage</button>
+                <button class="nav-btn" data-tab="analytics"><i class="fa-solid fa-chart-line"></i> Analytics</button>
+                <button class="nav-btn" data-tab="settings"><i class="fa-solid fa-cog"></i> Settings</button>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <div class="role-pill">Role: <strong id="roleLabel">Admin</strong></div>
+                <div class="small-actions">
+                    <button id="themeToggleBtn" class="icon-btn" title="Toggle theme"><i
+                            class="fa-solid fa-moon"></i></button>
+                    <button id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="main">
+            <header class="topbar">
+                <div class="search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input id="searchInput" placeholder="Search site, devices or logs..." />
+                </div>
+
+                <div class="top-actions">
+                    <div class="stat quick">
+                        <div class="label">Total Generation</div>
+                        <div id="topGen" class="value">-- kW</div>
+                    </div>
+                    <div class="stat quick">
+                        <div class="label">Total Output</div>
+                        <div id="topOut" class="value">-- kW</div>
+                    </div>
+                    <div class="stat quick">
+                        <div class="label">Battery Stored</div>
+                        <div id="topStored" class="value">-- kWh</div>
+                    </div>
+                    <div class="avatar">UA</div>
+                </div>
+            </header>
+
+            <section class="content">
+
+                <!-- DASHBOARD: Combined charts (ONLY combined) -->
+                <div class="tab active" id="tab-dashboard">
+                    <div class="cards-row">
+                        
+                        <article class="card">
+                            <h4>Total Generation vs Output (combined)</h4>
+                            <canvas id="combinedChart" height="140"></canvas>
+                        </article>
+
+                        <article class="card">
+                            <h4>Combined Inputs (stacked view)</h4>
+                            <canvas id="stackedInputsChart" height="140"></canvas>
+                        </article>
+
+                        <article class="card">
+                            <h4>Energy Summary</h4>
+                            <p><strong>Generated (kWh):</strong> <span id="summaryGen">0</span></p>
+                            <p><strong>Sent / Used (kWh):</strong> <span id="summaryOut">0</span></p>
+                            <p><strong>Saved to Batteries (kWh):</strong> <span id="summarySaved">0</span></p>
+                            <p><strong>Total Battery Capacity (kWh):</strong> <span id="summaryCapacity">0</span></p>
+                        </article>
+                    </div>
+
+                    <!-- Destination allocation control -->
+                    <div class="cards-row">
+                        <article class="card">
+                            <h4>Output Destinations (allocate % of total output)</h4>
+                            <div id="destinationsContainer"></div>
+                            <button id="addDestinationBtn" class="action-btn">+ Add Destination</button>
+                        </article>
+
+                        <article class="card">
+                            <h4>Quick Controls</h4>
+                            <p>Set all source-to-output %</p>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <button id="forceAllToOutput" class="action-btn">All → Output</button>
+                                <button id="forceAllToBattery" class="action-btn">All → Battery</button>
+                            </div>
+                            <p style="margin-top:8px;"><strong>Energy Saved (kWh):</strong> <span
+                                    id="energySaved">0</span></p>
+                        </article>
+
+                        <article class="card">
+                            <h4>Alerts & Events</h4>
+                            <ul id="alertList"></ul>
+                            <div id="logBox"></div>
+                        </article>
+                    </div>
+
+                </div>
+
+                <!-- SOURCES: per-source controls and charts -->
+                <div class="tab" id="tab-sources">
+                    <div class="cards-row">
+
+                        <!-- Solar -->
+                        <article class="card">
+                            <h4>Solar Panels</h4>
+                            <div class="status-badge" id="solarStatus">Active</div>
+                            <div id="solarGauge" class="gauge">0 kW</div>
+                            <canvas id="solarChart" class="mini-chart"></canvas>
+
+                            <label>Sunlight Level:</label>
+                            <input type="range" id="solarLight" min="0" max="100" value="80">
+                            <span id="solarLightValue">80%</span>
+
+                            <label>Enable Solar</label>
+                            <input type="checkbox" id="solarEnable" checked />
+
+
+                            <label>Send to Output (%)</label>
+                            <input type="range" id="solarToOut" min="0" max="100" value="80">
+                            <span id="solarToOutVal">80%</span>
+                        </article>
+
+                        <!-- Wind -->
+                        <article class="card">
+                            <h4>Wind Turbine</h4>
+                            <div class="status-badge" id="windStatus">Active</div>
+                            <div id="windGauge" class="gauge">0 kW</div>
+                            <canvas id="windChart" class="mini-chart"></canvas>
+
+                            <label>Wind Speed (m/s):</label>
+                            <input type="range" id="windSpeed" min="0" max="25" value="8">
+                            <span id="windSpeedValue">8 m/s</span>
+
+                            <label>Enable Wind</label>
+                            <input type="checkbox" id="windEnable" checked />
+
+
+                            <label>Send to Output (%)</label>
+                            <input type="range" id="windToOut" min="0" max="100" value="70">
+                            <span id="windToOutVal">70%</span>
+                        </article>
+
+                        <!-- Hydro -->
+                        <article class="card">
+                            <h4>Hydro Dam</h4>
+                            <div class="status-badge" id="hydroStatus">Active</div>
+                            <div id="hydroGauge" class="gauge">0 kW</div>
+                            <canvas id="hydroChart" class="mini-chart"></canvas>
+
+                            <label>Flow (%)</label>
+                            <input type="range" id="hydroFlow" min="0" max="100" value="50">
+                            <span id="hydroFlowVal">50%</span>
+
+                            <label>Enable Hydro</label>
+                            <input type="checkbox" id="hydroEnable" checked />
+
+                            <label>Send to Output (%)</label>
+                            <input type="range" id="hydroToOut" min="0" max="100" value="60">
+                            <span id="hydroToOutVal">60%</span>
+                        </article>
+
+                        <!-- Diesel -->
+                        <article class="card">
+                            <h4>Backup Diesel</h4>
+                            <div class="status-badge" id="dieselStatus">Offline</div>
+                            <div id="dieselGauge" class="gauge">0 kW</div>
+                            <canvas id="dieselChart" class="mini-chart"></canvas>
+
+                            <label>Enable Diesel</label>
+                            <input type="checkbox" id="dieselEnable" />
+
+                            <label>Send to Output (%)</label>
+                            <input type="range" id="dieselToOut" min="0" max="100" value="100">
+                            <span id="dieselToOutVal">100%</span>
+                        </article>
+
+                    </div>
+                </div>
+
+                <!-- STORAGE: batteries overview & controls -->
+                <div class="tab" id="tab-storage">
+                    <h2>Battery Storage</h2>
+                    <p>Multiple batteries behave like real storage (kWh capacity, charge/discharge rates)</p>
+
+                    <div id="batteriesContainer" class="cards-row"></div>
+
+                    <article class="card">
+                        <h4>Add Battery</h4>
+                        <label>Capacity (kWh)</label>
+                        <input id="newBatteryCapacity" type="number" value="500" />
+                        <label>Max Charge Rate (kW)</label>
+                        <input id="newBatteryChargeRate" type="number" value="200" />
+                        <label>Max Discharge Rate (kW)</label>
+                        <input id="newBatteryDischargeRate" type="number" value="200" />
+                        <button id="addBatteryBtn" class="action-btn">Add Battery</button>
+                    </article>
+                </div>
+
+                <!-- ANALYTICS (placeholder) -->
+                <div class="tab" id="tab-analytics">
+                    <h2>Analytics</h2>
+                    <div class="cards-row">
+
+                        <article class="card">
+                            <h4>Source Contribution (kWh)</h4>
+                            <canvas id="analyticsSourcePie"></canvas>
+                        </article>
+
+                        <article class="card">
+                            <h4>Generation Trend (kW)</h4>
+                            <canvas id="analyticsGenTrend"></canvas>
+                        </article>
+
+                        <article class="card">
+                            <h4>Battery Storage Trend (kWh)</h4>
+                            <canvas id="analyticsBatteryTrend"></canvas>
+                        </article>
+
+                        <article class="card">
+                            <h4>Destination Consumption (kW)</h4>
+                            <canvas id="analyticsDestinations"></canvas>
+                        </article>
+
+                        <article class="card">
+                            <h4>Forecast (Next 15 minutes)</h4>
+                            <p><strong>Forecast Gen:</strong> <span id="forecastGen">--</span> kW</p>
+                            <p><strong>Forecast Battery:</strong> <span id="forecastBattery">--</span> kWh</p>
+                        </article>
+
+                    </div>
+
+                </div>
+
+
+                <!-- SETTINGS -->
+                <div class="tab" id="tab-settings">
+                    <h2>Settings</h2>
+                    <div class="cards-row">
+
+                        <article class="card">
+                            <h4>Theme</h4>
+                            <button id="themeLight" class="action-btn">Light Mode</button>
+                            <button id="themeDark" class="action-btn">Dark Mode</button>
+                            <button id="themeSolar" class="action-btn">Solar Theme</button>
+                            <button id="themeBlue" class="action-btn">Grid Blue</button>
+                            <button id="themeGreen" class="action-btn">Eco Green</button>
+                        </article>
+
+                        <article class="card">
+                            <h4>Simulation Speed / Timeline</h4>
+                            <p>Scale time for faster demo:</p>
+                            <button class="action-btn simSpeed" data-speed="1">1x (real)</button>
+                            <button class="action-btn simSpeed" data-speed="2">2x</button>
+                            <button class="action-btn simSpeed" data-speed="5">5x</button>
+                            <button class="action-btn simSpeed" data-speed="10">10x</button>
+                        </article>
+
+                        <article class="card">
+                            <h4>Reset Options</h4>
+                            <button id="resetBatteries" class="action-btn">Reset Batteries</button>
+                            <button id="resetDestinations" class="action-btn">Reset Destinations</button>
+                            <button id="resetAll" class="action-btn">Reset All</button>
+                        </article>
+
+                        <article class="card">
+                            <h4>Demo Presets</h4>
+                            <button class="action-btn preset" data-preset="sunny">Sunny Day</button>
+                            <button class="action-btn preset" data-preset="windy">High Wind</button>
+                            <button class="action-btn preset" data-preset="hydro">Hydro Overflow</button>
+                            <button class="action-btn preset" data-preset="diesel">Emergency Diesel</button>
+                        </article>
+
+                        <article class="card">
+                            <h4>Control Modes</h4>
+                            <label>
+                                <input type="checkbox" id="autoBalanceToggle">
+                                Auto-Balance Mode (let system tune sources & diesel)
+                            </label>
+                        </article>
+
+                        <article class="card">
+                            <h4>Grid Mode</h4>
+                            <select id="gridMode">
+                                <option value="grid">GRID-CONNECTED</option>
+                                <option value="island">ISLANDED</option>
+                                <option value="hybrid">HYBRID</option>
+                            </select>
+
+                            <p style="margin-top:8px;">
+                                <strong>Grid Import:</strong> <span id="gridImport">0</span> kW
+                            </p>
+                            <p>
+                                <strong>Grid Export:</strong> <span id="gridExport">0</span> kW
+                            </p>
+                        </article>
+
+
+                        <article class="card">
+                            <h4>Weather Engine</h4>
+
+                            <label style="display:block; margin-bottom:8px;">
+                                <input type="checkbox" id="weatherEnabled">
+                                Enable Weather Simulation
+                            </label>
+
+                            <label>
+                                Manual Time Control:
+                                <input type="range" id="weatherTimeSlider" min="0" max="1440" value="720">
+                            </label>
+
+                            <label style="display:block; margin-top:8px;">
+                                <input type="checkbox" id="weatherAutoClock">
+                                Auto Time Progress
+                            </label>
+
+
+                            <p><strong>Time:</strong> <span id="weatherTime">--:--</span></p>
+
+                            <p><strong>Sunlight Level:</strong> <span id="weatherSun">--</span></p>
+                            <p><strong>Wind Speed:</strong> <span id="weatherWind">--</span></p>
+                            <p><strong>Hydro Flow:</strong> <span id="weatherHydro">--</span></p>
+                        </article>
+
+                        <article class="card">
+                            <h4>Weather Controls</h4>
+                            <button id="updateWeather" class="action-btn">Update Weather</button>
+                        </article>
+
+
+
+                    </div>
+                </div>
+
+
+
+            </section>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="./js/app.js"></script>
+</body>
+
+</html>
